@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 
 // Cache para armazenar instância do browser
 let browserInstance = null;
@@ -13,29 +13,8 @@ async function getBrowser() {
 
     console.log('[PUPPETEER] 🚀 Iniciando browser...');
     
-    // Tenta encontrar o Chrome instalado no sistema
-    const chromePaths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        process.env.CHROME_PATH,
-        process.env.PUPPETEER_EXECUTABLE_PATH
-    ].filter(Boolean);
-
-    let executablePath = chromePaths.find(path => {
-        try {
-            const fs = require('fs');
-            return fs.existsSync(path);
-        } catch {
-            return false;
-        }
-    });
-
-    if (!executablePath) {
-        throw new Error('Chrome não encontrado. Instale o Google Chrome.');
-    }
-
-    browserInstance = await puppeteer.launch({
-        executablePath,
+    // Configuração para Railway/Linux ou Windows local
+    const launchOptions = {
         headless: true,
         args: [
             '--no-sandbox',
@@ -47,12 +26,25 @@ async function getBrowser() {
             '--disable-blink-features=AutomationControlled',
             '--window-size=1920,1080',
             '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--single-process',
+            '--no-zygote'
         ]
-    });
+    };
 
-    console.log('[PUPPETEER] ✅ Browser iniciado');
-    return browserInstance;
+    // Se estiver no Railway/Linux, usa o Chromium do nixpacks
+    if (process.env.NIXPACKS_METADATA || process.platform === 'linux') {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/*/bin/chromium';
+    }
+
+    try {
+        browserInstance = await puppeteer.launch(launchOptions);
+        console.log('[PUPPETEER] ✅ Browser iniciado');
+        return browserInstance;
+    } catch (error) {
+        console.error('[PUPPETEER] ❌ Erro ao iniciar browser:', error.message);
+        throw new Error('Erro ao iniciar navegador: ' + error.message);
+    }
 }
 
 /**

@@ -1,4 +1,12 @@
-const puppeteer = require('puppeteer-core');
+// Usa puppeteer (com Chromium) no Railway, puppeteer-core localmente
+let puppeteer;
+try {
+    puppeteer = require('puppeteer');
+    console.log('[PUPPETEER] 📦 Usando puppeteer (com Chromium incluído)');
+} catch (e) {
+    puppeteer = require('puppeteer-core');
+    console.log('[PUPPETEER] 📦 Usando puppeteer-core (Chrome do sistema)');
+}
 
 // Cache para armazenar instância do browser
 let browserInstance = null;
@@ -13,29 +21,7 @@ async function getBrowser() {
 
     console.log('[PUPPETEER] 🚀 Iniciando browser...');
     
-    // Tenta encontrar o Chrome instalado no sistema
-    const chromePaths = [
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        process.env.CHROME_PATH,
-        process.env.PUPPETEER_EXECUTABLE_PATH
-    ].filter(Boolean);
-
-    let executablePath = chromePaths.find(path => {
-        try {
-            const fs = require('fs');
-            return fs.existsSync(path);
-        } catch {
-            return false;
-        }
-    });
-
-    if (!executablePath) {
-        throw new Error('Chrome não encontrado. Instale o Google Chrome.');
-    }
-
-    browserInstance = await puppeteer.launch({
-        executablePath,
+    const launchOptions = {
         headless: true,
         args: [
             '--no-sandbox',
@@ -49,7 +35,34 @@ async function getBrowser() {
             '--disable-web-security',
             '--disable-features=IsolateOrigins,site-per-process'
         ]
-    });
+    };
+
+    // Se estiver usando puppeteer-core, precisa especificar o executablePath
+    if (puppeteer.name === 'puppeteer-core' || !puppeteer.executablePath) {
+        const chromePaths = [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            process.env.CHROME_PATH,
+            process.env.PUPPETEER_EXECUTABLE_PATH
+        ].filter(Boolean);
+
+        let executablePath = chromePaths.find(path => {
+            try {
+                const fs = require('fs');
+                return fs.existsSync(path);
+            } catch {
+                return false;
+            }
+        });
+
+        if (!executablePath) {
+            throw new Error('Chrome não encontrado. Instale o Google Chrome ou use puppeteer ao invés de puppeteer-core.');
+        }
+
+        launchOptions.executablePath = executablePath;
+    }
+
+    browserInstance = await puppeteer.launch(launchOptions);
 
     console.log('[PUPPETEER] ✅ Browser iniciado');
     return browserInstance;

@@ -5,7 +5,7 @@
 
 const axios = require('axios');
 
-const API_URL = 'http://localhost:3001/api/vehicles/plate';
+const API_URL = 'https://torq.up.railway.app/api/vehicles/plate';
 
 // Placas de teste
 const testPlates = [
@@ -36,17 +36,17 @@ const log = {
 
 async function testPlate(plateData) {
     const { plate, expected } = plateData;
-    
+
     log.separator();
     log.info(`Testando placa: ${plate}`);
-    
+
     try {
         const startTime = Date.now();
         const response = await axios.get(`${API_URL}/${plate}`, { timeout: 40000 });
         const duration = Date.now() - startTime;
-        
+
         const { success, data, error } = response.data;
-        
+
         if (!success) {
             if (expected === null) {
                 log.success(`Placa não encontrada (esperado): ${error}`);
@@ -56,16 +56,16 @@ async function testPlate(plateData) {
                 return { plate, status: 'FAIL', duration, error };
             }
         }
-        
+
         // Valida campos obrigatórios
         const requiredFields = ['placa', 'marca', 'modelo', 'ano', 'cor'];
         const missingFields = requiredFields.filter(field => !data[field]);
-        
+
         if (missingFields.length > 0) {
             log.error(`Campos faltando: ${missingFields.join(', ')}`);
             return { plate, status: 'FAIL', duration, error: 'Campos faltando' };
         }
-        
+
         // Exibe dados extraídos
         log.success('Dados extraídos com sucesso!');
         log.data(`Marca: ${data.marca}`);
@@ -77,38 +77,38 @@ async function testPlate(plateData) {
         log.data(`Município: ${data.municipio || 'N/A'}`);
         log.data(`UF: ${data.uf || 'N/A'}`);
         log.data(`Tempo: ${duration}ms`);
-        
+
         // Valida contra valores esperados
         if (expected) {
             let validationPassed = true;
-            
+
             if (expected.marca && !data.marca.includes(expected.marca)) {
                 log.warning(`Marca esperada: ${expected.marca}, recebida: ${data.marca}`);
                 validationPassed = false;
             }
-            
+
             if (expected.modelo && !data.modelo.includes(expected.modelo)) {
                 log.warning(`Modelo esperado: ${expected.modelo}, recebido: ${data.modelo}`);
                 validationPassed = false;
             }
-            
+
             if (expected.ano && data.ano !== expected.ano) {
                 log.warning(`Ano esperado: ${expected.ano}, recebido: ${data.ano}`);
                 validationPassed = false;
             }
-            
+
             if (expected.cor && !data.cor.toLowerCase().includes(expected.cor.toLowerCase())) {
                 log.warning(`Cor esperada: ${expected.cor}, recebida: ${data.cor}`);
                 validationPassed = false;
             }
-            
+
             if (!validationPassed) {
                 return { plate, status: 'PARTIAL', duration, data };
             }
         }
-        
+
         return { plate, status: 'PASS', duration, data };
-        
+
     } catch (error) {
         log.error(`Erro ao testar placa: ${error.message}`);
         return { plate, status: 'ERROR', error: error.message };
@@ -120,43 +120,43 @@ async function runTests() {
     log.info('🚀 Iniciando Testes do Scraper');
     log.info(`Total de placas: ${testPlates.length}`);
     console.log('\n');
-    
+
     const results = [];
-    
+
     for (const plateData of testPlates) {
         const result = await testPlate(plateData);
         results.push(result);
-        
+
         // Aguarda 2 segundos entre testes para não sobrecarregar
         if (testPlates.indexOf(plateData) < testPlates.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }
-    
+
     // Resumo dos testes
     log.separator();
     log.info('📊 Resumo dos Testes');
     log.separator();
-    
+
     const passed = results.filter(r => r.status === 'PASS').length;
     const failed = results.filter(r => r.status === 'FAIL').length;
     const partial = results.filter(r => r.status === 'PARTIAL').length;
     const errors = results.filter(r => r.status === 'ERROR').length;
-    
+
     console.log(`\n${colors.green}✅ Passou: ${passed}${colors.reset}`);
     console.log(`${colors.yellow}⚠️  Parcial: ${partial}${colors.reset}`);
     console.log(`${colors.red}❌ Falhou: ${failed}${colors.reset}`);
     console.log(`${colors.red}💥 Erros: ${errors}${colors.reset}`);
-    
+
     // Tempo médio
     const durations = results.filter(r => r.duration).map(r => r.duration);
     if (durations.length > 0) {
         const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
         console.log(`\n${colors.cyan}⏱️  Tempo médio: ${Math.round(avgDuration)}ms${colors.reset}`);
     }
-    
+
     log.separator();
-    
+
     // Detalhes dos testes que falharam
     const failedTests = results.filter(r => r.status === 'FAIL' || r.status === 'ERROR');
     if (failedTests.length > 0) {
@@ -165,9 +165,9 @@ async function runTests() {
             console.log(`  - ${test.plate}: ${test.error || 'Erro desconhecido'}`);
         });
     }
-    
+
     console.log('\n');
-    
+
     // Exit code baseado nos resultados
     process.exit(failed + errors > 0 ? 1 : 0);
 }

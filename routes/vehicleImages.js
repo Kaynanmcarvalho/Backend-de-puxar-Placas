@@ -11,7 +11,7 @@ const { findImageInFirestore, saveImageToFirestore, uploadImageToStorage } = req
 router.get('/search', async (req, res) => {
     try {
         const { name } = req.query;
-        
+
         if (!name) {
             return res.status(400).json({
                 success: false,
@@ -33,7 +33,7 @@ router.get('/search', async (req, res) => {
         // 1. Tenta buscar no cache (Firestore)
         try {
             const cachedImage = await findImageInFirestore(normalizedName);
-            
+
             if (cachedImage) {
                 console.log('[VEHICLE IMAGE API] ✅ Imagem encontrada no cache!');
                 return res.json({
@@ -66,7 +66,7 @@ router.get('/search', async (req, res) => {
         for (const searchQuery of searchVariations) {
             console.log(`[VEHICLE IMAGE API] 🔍 Tentando: "${searchQuery}"`);
             imageResult = await searchVehicleImage(searchQuery);
-            
+
             if (imageResult.success) {
                 console.log(`[VEHICLE IMAGE API] ✅ Imagem encontrada com: "${searchQuery}"`);
                 break;
@@ -86,64 +86,76 @@ router.get('/search', async (req, res) => {
             });
         }
 
-        // 3. Salva no Firebase (opcional, se configurado)
-        try {
-            // Download da imagem
-            const imageBuffer = await downloadImage(imageResult.imageUrl);
-            
-            // Gera nome único para o arquivo
-            const timestamp = Date.now();
-            const fileName = `${normalizedName.replace(/\s+/g, '_')}_${timestamp}.jpg`;
-            
-            // Upload para Storage
-            const storageUrl = await uploadImageToStorage(imageBuffer, fileName);
-            
-            // Salva metadados no Firestore
-            const firestoreData = {
+        // 3. Retorna a imagem IMEDIATAMENTE pro usuário
+        console.log('[VEHICLE IMAGE API] ✅ Retornando imagem encontrada');
+
+        res.json({
+            success: true,
+            data: {
+                imageUrl: imageResult.imageUrl,
                 originalName: name,
                 normalizedName: normalizedName,
                 vehicleType: vehicleType,
                 year: year,
-                imageUrl: storageUrl,
                 source: imageResult.source,
+                cached: false,
                 allImages: imageResult.allImages || []
-            };
-            
-            await saveImageToFirestore(firestoreData);
-            
-            console.log('[VEHICLE IMAGE API] ✅ Imagem salva no Firebase');
-            
-            return res.json({
-                success: true,
-                data: {
-                    imageUrl: storageUrl,
-                    originalName: name,
-                    normalizedName: normalizedName,
-                    vehicleType: vehicleType,
-                    year: year,
-                    source: imageResult.source,
-                    cached: false
+            }
+        });
+
+        // 4. Tenta salvar no Firebase em BACKGROUND (não bloqueia a resposta)
+        (async () => {
+            try {
+                console.log('[VEHICLE IMAGE API] 🔄 Tentando salvar no Firebase em background...');
+
+                // Download da imagem
+                const imageBuffer = await downloadImage(imageResult.imageUrl);
+
+                // Gera nome único para o arquivo
+                const timestamp = Date.now();
+                const fileName = `${normalizedName.replace(/\s+/g, '_')}_${timestamp}.jpg`;
+
+                // Tenta upload para Storage
+                try {
+                    const storageUrl = await uploadImageToStorage(imageBuffer, fileName);
+
+                    // Salva metadados no Firestore com URL do Storage
+                    const firestoreData = {
+                        originalName: name,
+                        normalizedName: normalizedName,
+                        vehicleType: vehicleType,
+                        year: year,
+                        imageUrl: storageUrl,
+                        source: imageResult.source,
+                        allImages: imageResult.allImages || []
+                    };
+
+                    await saveImageToFirestore(firestoreData);
+                    console.log('[VEHICLE IMAGE API] ✅ Imagem salva no Firebase Storage + Firestore');
+
+                } catch (storageError) {
+                    console.warn('[VEHICLE IMAGE API] ⚠️  Erro no Storage, tentando salvar só no Firestore...');
+
+                    // Se falhar no Storage, salva no Firestore com URL original
+                    const firestoreData = {
+                        originalName: name,
+                        normalizedName: normalizedName,
+                        vehicleType: vehicleType,
+                        year: year,
+                        imageUrl: imageResult.imageUrl, // URL original do scraping
+                        source: imageResult.source,
+                        allImages: imageResult.allImages || []
+                    };
+
+                    await saveImageToFirestore(firestoreData);
+                    console.log('[VEHICLE IMAGE API] ✅ Imagem salva no Firestore (sem Storage)');
                 }
-            });
-            
-        } catch (firebaseError) {
-            console.warn('[VEHICLE IMAGE API] ⚠️  Erro ao salvar no Firebase:', firebaseError.message);
-            
-            // Retorna a imagem mesmo sem salvar no Firebase
-            return res.json({
-                success: true,
-                data: {
-                    imageUrl: imageResult.imageUrl,
-                    originalName: name,
-                    normalizedName: normalizedName,
-                    vehicleType: vehicleType,
-                    year: year,
-                    source: imageResult.source,
-                    cached: false
-                },
-                warning: 'Imagem não foi salva no cache'
-            });
-        }
+
+            } catch (firebaseError) {
+                console.warn('[VEHICLE IMAGE API] ⚠️  Erro ao salvar no Firebase:', firebaseError.message);
+                // Não faz nada, a imagem já foi retornada pro usuário
+            }
+        })();
 
     } catch (error) {
         console.error('[VEHICLE IMAGE API] 💥 Erro geral:', error);
@@ -162,7 +174,7 @@ router.post('/search', async (req, res) => {
     try {
         const { name, vehicleName } = req.body;
         const vehicleNameToUse = name || vehicleName;
-        
+
         if (!vehicleNameToUse) {
             return res.status(400).json({
                 success: false,
@@ -193,7 +205,7 @@ router.post('/search', async (req, res) => {
 router.post('/batch', async (req, res) => {
     try {
         const { vehicles } = req.body;
-        
+
         if (!vehicles || !Array.isArray(vehicles)) {
             return res.status(400).json({
                 success: false,
@@ -208,7 +220,7 @@ router.post('/batch', async (req, res) => {
         for (const vehicleName of vehicles) {
             try {
                 const normalizedName = normalizeVehicleName(vehicleName);
-                
+
                 // Tenta buscar no cache primeiro
                 let cachedImage = null;
                 try {

@@ -24,7 +24,12 @@ function initializeFirebase() {
         }
 
         // Parse do JSON das credenciais
-        const serviceAccount = JSON.parse(serviceAccountJson);
+        let serviceAccount = JSON.parse(serviceAccountJson);
+
+        // Corrige a private_key substituindo \\n por quebras de linha reais
+        if (serviceAccount.private_key) {
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+        }
 
         console.log('[FIREBASE] 📂 Carregando credenciais do .env');
 

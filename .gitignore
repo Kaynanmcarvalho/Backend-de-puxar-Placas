@@ -7,6 +7,10 @@ package-lock.json
 .env.local
 .env.*.local
 
+# Firebase credentials (NUNCA commitar!)
+*firebase*.json
+oficina-reparofacil-firebase-adminsdk-fbsvc-*.json
+
 # Logs
 logs
 *.log

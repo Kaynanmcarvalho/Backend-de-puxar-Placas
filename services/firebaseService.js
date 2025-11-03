@@ -5,7 +5,7 @@ let storage = null;
 let initialized = false;
 
 /**
- * Inicializa o Firebase Admin SDK
+ * Inicializa o Firebase Admin SDK usando variáveis de ambiente
  */
 function initializeFirebase() {
     if (initialized) {
@@ -13,17 +13,20 @@ function initializeFirebase() {
     }
 
     try {
-        // Verifica se as credenciais estão disponíveis
-        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-            ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-            : null;
-
+        // Lê as credenciais do .env
+        const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
         const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
-        if (!serviceAccount || !storageBucket) {
-            console.warn('[FIREBASE] ⚠️  Credenciais não configuradas. Firebase desabilitado.');
+        if (!serviceAccountJson || !storageBucket) {
+            console.warn('[FIREBASE] ⚠️  Credenciais não configuradas no .env');
+            console.warn('[FIREBASE] 💡 Configure FIREBASE_SERVICE_ACCOUNT e FIREBASE_STORAGE_BUCKET no arquivo .env');
             return { db: null, storage: null };
         }
+
+        // Parse do JSON das credenciais
+        const serviceAccount = JSON.parse(serviceAccountJson);
+
+        console.log('[FIREBASE] 📂 Carregando credenciais do .env');
 
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
@@ -34,11 +37,14 @@ function initializeFirebase() {
         storage = admin.storage().bucket();
         initialized = true;
 
-        console.log('[FIREBASE] ✅ Inicializado com sucesso');
+        console.log('[FIREBASE] ✅ Inicializado com sucesso!');
+        console.log(`[FIREBASE] 📦 Projeto: ${serviceAccount.project_id}`);
+        console.log(`[FIREBASE] 🗄️  Storage Bucket: ${storageBucket}`);
         return { db, storage };
 
     } catch (error) {
         console.error('[FIREBASE] ❌ Erro ao inicializar:', error.message);
+        console.error('[FIREBASE] 💡 Verifique se as credenciais no .env estão corretas');
         return { db: null, storage: null };
     }
 }

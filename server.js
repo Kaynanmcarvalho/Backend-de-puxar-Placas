@@ -17,12 +17,18 @@ app.use(cors({
     exposedHeaders: ['Content-Length', 'X-JSON'],
     maxAge: 86400 // Cache preflight por 24 horas
 }));
+
+// Handle OPTIONS requests explicitly
+app.options('*', cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    console.log(`  Origin: ${req.headers.origin || 'none'}`);
+    console.log(`  User-Agent: ${req.headers['user-agent'] || 'none'}`);
     next();
 });
 

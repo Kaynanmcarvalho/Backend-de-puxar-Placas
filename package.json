@@ -21,8 +21,12 @@
     "cheerio": "^1.1.2",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "firebase": "^12.5.0",
+    "firebase-admin": "^13.5.0",
     "puppeteer": "^24.26.1",
     "puppeteer-core": "^24.26.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "sinesp-api": "^3.0.0"
   },
   "devDependencies": {

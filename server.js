@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const vehiclesRouter = require('./routes/vehicles');
+const vehicleImagesRouter = require('./routes/vehicleImages');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,6 +41,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/vehicles', vehiclesRouter);
+app.use('/api/vehicle-images', vehicleImagesRouter);
 
 // 404 handler
 app.use((req, res) => {
@@ -66,6 +68,7 @@ app.listen(PORT, () => {
     console.log(`📡 Server running on: http://localhost:${PORT}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/health`);
     console.log(`🚗 Vehicle API: http://localhost:${PORT}/api/vehicles`);
+    console.log(`🖼️  Vehicle Images API: http://localhost:${PORT}/api/vehicle-images`);
     console.log('='.repeat(50));
 });
 
